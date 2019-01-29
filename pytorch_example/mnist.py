@@ -12,8 +12,8 @@ class Net(nn.Module):
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
         self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
         self.conv2_drop = nn.Dropout2d()
-        self.fc1 = nn.Linear(320, 50)
-        self.fc2 = nn.Linear(50, 10)
+        self.fc1 = nn.Linear(320, 200)
+        self.fc2 = nn.Linear(200, 10)
 
     def forward(self, x):
         x = F.relu(F.max_pool2d(self.conv1(x), 2))
@@ -23,6 +23,17 @@ class Net(nn.Module):
         x = F.dropout(x, training=self.training)
         x = self.fc2(x)
         return F.log_softmax(x, dim=1)
+        
+        
+class Log_reg(nn.Module):
+    def __init__(self):
+        super(Log_reg, self).__init__()
+        self.fc1 = nn.Linear(784, 10)
+        
+    def forward(self, x):
+        x = x.view(-1, 784)
+        x = F.log_softmax(self.fc1(x))
+        return x
 
 def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
@@ -72,8 +83,11 @@ def main():
                         help='disables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
-    parser.add_argument('--log-interval', type=int, default=10, metavar='N',
+    parser.add_argument('--log-interval', type=int, default=100, metavar='N',
                         help='how many batches to wait before logging training status')
+    parser.add_argument('--model-type', type=str, default="network", metavar='T', 
+                        help='toggle between neural network and logistic regression')        
+    
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -96,8 +110,10 @@ def main():
                        ])),
         batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
-
-    model = Net().to(device)
+    if args.model_type == "network":
+        model = Net().to(device)
+    else:
+        model = Log_reg().to(device)
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
     for epoch in range(1, args.epochs + 1):
